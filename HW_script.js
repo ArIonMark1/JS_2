@@ -50,7 +50,7 @@ class GoodsList {
     constructor() {
         this.goods = [];
     }
-    fetchGoods(cb) {   // теперь млять ассссинхронная херота надо вызывать по выёбному
+    fetchGoods(cb) {  
 
         makeGETRequest(`${API_URL}/catalogData.json`)
         .then((goods)=>{ this.goods = JSON.parse(goods); cb()});
