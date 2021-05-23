@@ -87,3 +87,8 @@ img{
     border: none;
     margin-top: 20px;
 }
+.basket-page {
+    border: 1px solid green;
+    min-height: 50px;
+    background-color: teal;
+}
