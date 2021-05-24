@@ -20,7 +20,6 @@ const makeGETRequest = (url) => {
         xhr.open('GET', url, true);
         xhr.send();
     });
-     
 }
 
 // =========================================
@@ -33,6 +32,15 @@ class GoodsItem {
         this.price = price;
     }
     render() {
+        let data = {
+            "img": this.img,
+            "product_name": this.product_name,
+            "id_product": this.id_product,
+            "price": this.price,
+        };
+
+        data = JSON.stringify(data);
+
         return `
         <div class="goods-item">
             <img src="${this.img}" alt="picture">
@@ -40,7 +48,7 @@ class GoodsItem {
             <p>id_product: ${this.id_product}</p>
             <p>${this.price}$</p>
             <p>Lorem ipsum, dolor sit amet consectetur adipisicing elit.</p>
-            <button class="buy-button" type="button" data-id="${this.id_product}">Добавить</button>
+            <button class="buy-button" type="button" data-id="${this.id_product}" id="add-btn-${this.id_product}">Добавить</button>
         </div>`; 
     }
 }
@@ -49,37 +57,35 @@ class GoodsItem {
 class GoodsList {
     constructor() {
         this.goods = [];
+        this.filteredGoods = [];
     }
-    fetchGoods(cb) {   // теперь млять ассссинхронная херота надо вызывать по выёбному
+    fetchGoods(cb) {  
 
         makeGETRequest(`${API_URL}/catalogData.json`)
         .then((goods)=>{ this.goods = JSON.parse(goods); cb()});
-        // cb()
-        // makeGETRequest(`${API_URL}/catalogData.json`, (goods) =>{
-        //     this.goods = JSON.parse(goods);
-        //     cb();
-        // })
-        // this.goods = [
-        //     {img:'picture.png', product_name: 'Skirt', price: 150 },
-        //     {img:'picture.png', product_name: 'Socks', price: 50 },
-        //     {img:'picture.png', product_name: 'Jaket', price: 350 },
-        //     {img:'picture.png', product_name: 'Shoes', price: 250 },
-        // ];
     }
+
+    filterGoods(value) {
+        const regexp = new RegExp(value, 'i');
+        this.filteredGoods = this.goods.filter(good => regexp.test(good.product_name));
+        this.render();
+    }
+
     render() {
         // метод – вывод списка товаров. Создадим для этого действия метод render(). 
         // Для каждого элемента массива goods будем создавать экземпляр класса GoodsItem и запрашивать его разметку.
         let listHtml = '';
-        this.goods.forEach( (good) => { const goodItem = new GoodsItem(good.img = 'https://pbs.twimg.com/profile_images/1165552547844829184/pQa03tdY.jpg', good.product_name, good.id_product, good.price); 
+        this.filteredGoods.forEach( (good) => { 
+            const goodItem = new GoodsItem(good.img = 'https://pbs.twimg.com/profile_images/1165552547844829184/pQa03tdY.jpg', good.product_name, good.id_product, good.price); 
             listHtml += goodItem.render();
         });
         document.querySelector('.goods-list').innerHTML = listHtml;
+        this._basket.setAddListeners(this.filteredGoods);
     }
 
     totalPrice() {
         // DZ!!! цена всех товаров в магазине
-        let fieldPrice = 0;
-        this.goods.forEach( (cost) => { fieldPrice += cost.price});
+        let fieldPrice = this.goods.forEach( (cost) => { fieldPrice += cost.price});
 
         document.querySelector('.total-price').innerHTML = `Total prise: ${fieldPrice}`;
     }
@@ -92,9 +98,6 @@ class GoodsList {
 
 // Теперь, чтобы вывести список, нужно создать экземпляр класса GoodsList, 
 // вызвать для него метод fetchGoods, чтобы записать список товаров в свойство goods, и вызвать render().
-const list = new GoodsList();
-list.fetchGoods( ()=>{list.render(); list.getTotalSum(); list.totalPrice();} );
-
 
 // ========================================================================
 // Dz!!!
@@ -106,58 +109,106 @@ list.fetchGoods( ()=>{list.render(); list.getTotalSum(); list.totalPrice();} );
     // удаления товара
     // получения списка товаров корзины
 
-class BasketRender extends GoodsItem{
-    constructor(...args){
+// ==========================================================
+
+class Basket {
+    constructor() {
+        this.goods = []
+    }
+    clearAll(){
+        this.goods = []
+
+    }
+    addItem(event) {
+        const {target} = event;
+        const { product = {} } = target.dataset;
+        this.goods.push(JSON.parse(product));
+        this.render();
+    }
+    removeItem({ target }) {
+        const { id } = target.dataset;
+        this.goods = this.goods.filter( (item) => String(item.id_product) !== String(id) );
+        this.render();
+    }
+
+    setAddListeners(list) {
+        list.forEach( (item) => {
+            document.getElementById(`add-btn-${item.id_product}`).addEventListener('click', (e) => this.addItem(e));
+        })
+    }
+
+    setDeleteListeners() {
+        this.goods.forEach( (item) => {
+            document.getElementById(`${item.id_product}`).addEventListener('click', (e) => this.removeItem(e));
+        })
+    }
+
+    render() {
+        let listHtml = '';
+        this.goods.forEach( good => {
+            const goodItem = new BasketItem(good.product_name, good.price, good.id_product);
+            listHtml += goodItem.render();
+        });
+        document.querySelector('.goods-list').innerHTML = listHtml;
+        this.setDeleteListeners();
+    }
+}
+class BasketItem extends GoodsItem {
+    constructor(...args) {
         super(...args);
         this.count = 0;
     }
+
+    addOne() {}
+
+    removeOne() {}
+
     render() {
         return `
         <div class="basket-list">
             <img src="${this.img}" alt="picture">
             <h3>${this.product_name}</h3>
-            <p>id_product: ${this.count}</p>
             <p>${this.price}$</p>
             <p>Lorem ipsum, dolor sit amet consectetur adipisicing elit.</p>
-            <button class="buy-button" type="button" data-id="${this.id_product}">Добавить</button>
+            <button class="buy-button" type="button" data-id="${this.id_product}" id="delete-btn-${this.id_product}">Удалить</button>
         </div>`;
     }
 }
 
-
-class BasketList extends GoodsList {
-    constructor(...args){
-        super(...args);
-        // this.priceForAll = price;
-        this.basketGoods = []
-    }
-    addOne({target}) {
-        const { product ={} } = target.dataset;
-        this.goods.push(JSON.parse(product));
-        this.render();
-    }
-    deleteAll(){ }
-    // добавление и уменшение кол-ва товара с помощью кнопок...
- 
-}
-
-const basket = new BasketList();
-const basketList = new BasketList();
-// basket.addOne;
-
-
-// ==========================================================
-
-let basketGoods = []
-document.onclick = (event) => {
-    if (event.target.classList.contains('buy-button')){
-        plusFunction(event.target.dataset.id)
-    } };
-
-const plusFunction = (id) => {basketGoods[id]++; render();}
-
-const render = () => {console.log(basketGoods)}
 // const list = new GoodsList();
+// list.fetchGoods( () => {list.render});
+
+const list = new GoodsList();
+
 // list.fetchGoods( ()=>{list.render(); list.getTotalSum(); list.totalPrice();} );
 
+const process = new Promise( (ok, err) => {
+    list.fetchGoods( ()=>{
+        list.render(); list.getTotalSum(); list.totalPrice(); ok();
+    })
+})
+
+process.then( () => {
+    const searchButton = document.querySelector('.search-button')
+const searchInput = document.querySelector('.goods-search')
+searchButton.addEventListener('click', (e) => {
+    const value = searchInput.value;
+    list.filterGoods(value);
+});
+searchInput.addEventListener('keydown', (e) => {
+    const value = searchInput.value;
+    list.filterGoods(value);
+});
+} )
+
+// const searchButton = document.querySelector('.search-button')
+// const searchInput = document.querySelector('.goods-search')
+// searchButton.addEventListener('click', (e) => {
+//     const value = searchInput.value;
+//     list.filterGoods(value);
+// });
+// searchInput.addEventListener('keydown', (e) => {
+//     const value = searchInput.value;
+//     list.filterGoods(value);
+// });
 
